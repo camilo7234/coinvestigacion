@@ -1,28 +1,17 @@
 import sys
 import os
 
-# Agrega la ruta del SDK al PYTHONPATH
-sdk_path = os.path.join(os.path.dirname(__file__), '..', 'sdk')
-sys.path.append(sdk_path)
+# Construir la ruta absoluta a la carpeta 'pspython' del SDK
+sdk_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sdk', 'PSPythonSDK', 'pspython'))
+print("Ruta del SDK:", sdk_path)
 
-# IMPORTANTE: Ajusta el nombre del módulo y las funciones según la documentación del SDK.
+# Agregar la ruta al sys.path si aún no está incluida
+if sdk_path not in sys.path:
+    sys.path.append(sdk_path)
+
+# Intentar importar el módulo 'pspymethods'
 try:
-    import ps_sdk  # Supongamos que el SDK se importa con este nombre
+    import pspymethods
+    print("El módulo 'pspymethods' se importó correctamente.")
 except ImportError as e:
-    print("No se pudo importar el SDK de PalmSens. Verifica que la ruta sea correcta.", e)
-    sys.exit(1)
-
-def test_connection():
-    # Inicializa la conexión con el dispositivo PalmSens a través del SDK.
-    # Reemplaza 'DispositivoPalmSens' y 'conectar()' con los nombres reales.
-    try:
-        dispositivo = ps_sdk.DispositivoPalmSens()
-        if dispositivo.conectar():
-            print("Conexión exitosa con PSTrace 5.9")
-        else:
-            print("Error al conectar con PSTrace 5.9")
-    except Exception as ex:
-        print("Excepción durante la conexión:", ex)
-
-if __name__ == "__main__":
-    test_connection()
+    print("No se pudo importar el SDK de PalmSens. Verifica que la ruta sea correcta. Error:", e)
