@@ -23,7 +23,7 @@ def conectar_bd():
         conn = psycopg2.connect(
             dbname="deteccion_metales",
             user="postgres",
-            password="1234",
+            password="pinkicito09",
             host="localhost",
             port="5432"
         )

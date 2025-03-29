@@ -1,0 +1,45 @@
+CREATE TABLE public.sensors (
+    id_sensor SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    location VARCHAR(255),
+    installation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    description TEXT
+);
+
+-- Tabla de experimentos
+CREATE TABLE public.experiments (
+    id_experiment SERIAL PRIMARY KEY,
+    sensor_id INT REFERENCES public.sensors(id_sensor) ON DELETE CASCADE,
+    experiment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    description TEXT
+);
+
+-- Tabla de mediciones
+CREATE TABLE public.measurements (
+    id_measurement SERIAL PRIMARY KEY,
+    experiment_id INT REFERENCES public.experiments(id_experiment) ON DELETE CASCADE,
+    measurement_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    voltage DOUBLE PRECISION NOT NULL,
+    current_avg DOUBLE PRECISION NOT NULL
+);
+
+-- Tabla de usuarios (agregada según tu solicitud)
+CREATE TABLE public.users (
+    id_user SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Índices para optimización
+CREATE INDEX idx_experiment_sensor ON public.experiments(sensor_id);
+CREATE INDEX idx_measurements_experiment ON public.measurements(experiment_id);
+CREATE INDEX idx_sensor_name ON public.sensors(name);
+CREATE INDEX idx_users_email ON public.users(email);
+
+-- Poblar la base de datos con datos iniciales
+INSERT INTO public.sensors (name, type, location, description) VALUES
+    ('Sensor de pH', 'Electroquímico', 'Planta de tratamiento', 'Mide el nivel de acidez del agua'),
+    ('Sensor de Plomo', 'Biosensor', 'Río principal', 'Detecta concentración de plomo en agua');
