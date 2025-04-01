@@ -1,8 +1,9 @@
 """
 pstrace_session.py
 
-Este módulo carga un archivo .PSSESSION utilizando el wrapper simplificado del SDK de PalmSens para Windows.
-Emplea la función LoadMeasurement de la clase SimpleLoadSaveFunctions para extraer la información de la sesión.
+Este módulo carga un archivo .PSSESSION utilizando el SDK completo de PalmSens.
+Se utiliza el método LoadSessionFile de la clase LoadSaveHelperFunctions (del namespace PalmSens.Core.LoadSave)
+para extraer la sesión completa.
 
 Uso:
     Ejecuta este módulo para probar la carga de datos a partir de un archivo .PSSESSION.
@@ -12,16 +13,16 @@ import os
 import sys
 import logging
 
-# Configuración del logging para registrar actividad y errores.
+# Configuración del logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Asegurar que la ruta del SDK esté en sys.path.
+# Agregar la ruta del SDK al sys.path
 sdk_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sdk', 'PSPythonSDK', 'pspython'))
 if sdk_path not in sys.path:
     sys.path.append(sdk_path)
-    logging.info("Ruta del SDK agregada: %s", sdk_path)
+logging.info("Ruta del SDK agregada: %s", sdk_path)
 
-# Intentar importar el módulo 'pspymethods'.
+# Intentar importar el módulo pspymethods para confirmar la carga del SDK
 try:
     import pspymethods
     logging.info("El módulo 'pspymethods' se importó correctamente en pstrace_session.py.")
@@ -29,31 +30,38 @@ except ImportError as e:
     logging.error("Error al importar 'pspymethods': %s", e)
     sys.exit(1)
 
-# Importar pythonnet (clr) y cargar el ensamblado PalmSens.Core.Windows.
+# Importar pythonnet (clr) y cargar el ensamblado PalmSens.Core.dll
 try:
     import clr
-    # Cargar el ensamblado PalmSens.Core.Windows (que se encuentra en tu carpeta de SDK)
-    clr.AddReference("PalmSens.Core.Windows")
-    from PalmSens.Core.Windows import SimpleLoadSaveFunctions
-    logging.info("Se importó correctamente SimpleLoadSaveFunctions desde PalmSens.Core.Windows.")
+    import pythonnet
+    pythonnet.load("coreclr")
+    clr.AddReference("System")
+    dll_path = os.path.join(sdk_path, "PalmSens.Core.dll")
+    if not os.path.exists(dll_path):
+        logging.error("No se encontró el archivo DLL en la ruta esperada: %s", dll_path)
+        sys.exit(1)
+    clr.AddReference(dll_path)
+    # Intentar importar LoadSaveHelperFunctions desde el namespace correcto, según la documentación:
+    from PalmSens.Core.LoadSave import LoadSaveHelperFunctions
+    logging.info("Se importó correctamente LoadSaveHelperFunctions desde PalmSens.Core.LoadSave.")
 except Exception as e:
-    logging.error("Error al importar SimpleLoadSaveFunctions: %s", e)
+    logging.error("Error al importar LoadSaveHelperFunctions: %s", e)
+    logging.error("Verifica que la DLL 'PalmSens.Core.dll' esté en la carpeta %s y que la versión del SDK sea compatible.", sdk_path)
     sys.exit(1)
 
 def cargar_sesion(file_path):
     """
-    Carga un archivo .PSSESSION utilizando el wrapper simplificado del SDK de PalmSens para Windows.
-    Emplea la función LoadMeasurement de la clase SimpleLoadSaveFunctions para obtener la sesión.
+    Carga un archivo .PSSESSION utilizando el método LoadSessionFile del SDK completo de PalmSens.
 
     Parámetros:
         file_path (str): Ruta completa al archivo .PSSESSION.
 
     Retorna:
-        data (object): Objeto con la información de la sesión (por ejemplo, un objeto SimpleMeasurement),
+        data (object): Objeto que contiene la sesión completa (por ejemplo, un SessionManager),
                        o None en caso de error.
     """
     try:
-        data = SimpleLoadSaveFunctions.LoadMeasurement(file_path)
+        data = LoadSaveHelperFunctions.LoadSessionFile(file_path)
         logging.info("Sesión cargada exitosamente desde %s", file_path)
         return data
     except Exception as e:
