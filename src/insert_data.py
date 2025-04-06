@@ -1,37 +1,46 @@
-import psycopg2
-from db_connection import conectar_bd
-from pstrace_connection import obtener_datos_pstrace
-import logging
+# src/insert_data.py
 
-# Configuración básica del logging para registrar información y errores.
+import os, sys, logging
+
+# 1) Rutas al proyecto y SDK
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+sdk_path = os.path.join(project_root, 'sdk', 'PSPythonSDK', 'pspython')
+if sdk_path not in sys.path:
+    sys.path.insert(0, sdk_path)
+
+from db_connection import conectar_bd
+from pstrace_session import cargar_sesion
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def insertar_mediciones(conn, datos):
+def insertar_mediciones(conn, session):
     """
-    Inserta las mediciones en la tabla 'measurements' de la base de datos.
-
-    Parámetros:
-        conn: Objeto de conexión a la base de datos.
-        datos: Lista de diccionarios, cada uno con las claves 'experiment_id', 'voltage' y 'current_avg'.
-
-    Retorna:
-        None
+    Inserta las mediciones de un SessionManager en la BD.
     """
+    # 1) Obtener la colección de mediciones
+    try:
+        measurements = list(session.Measurements)  # Convierte el IEnumerable a lista Python
+    except Exception:
+        # Si no es enumerable, intenta acceder a .Measurements como atributo
+        measurements = session.Measurements
+
+    count = len(measurements)
+    logging.info("Cantidad de mediciones a insertar: %d", count)
+
     cursor = conn.cursor()
     try:
-        # Registrar la cantidad de registros a insertar
-        logging.info("Cantidad de mediciones a insertar: %d", len(datos))
-        for medicion in datos:
-            # Verificar que el diccionario contenga las claves necesarias.
-            if all(key in medicion for key in ('experiment_id', 'voltage', 'current_avg')):
-                cursor.execute(
-                    "INSERT INTO measurements (experiment_id, voltage, current_avg) VALUES (%s, %s, %s)",
-                    (medicion['experiment_id'], medicion['voltage'], medicion['current_avg'])
-                )
-            else:
-                logging.warning("Medición incompleta, se omite: %s", medicion)
+        for meas in measurements:
+            # Ajusta estos nombres de propiedades según el objeto Measurement real:
+            voltage     = meas.Potential        # p.ej. Potential o Voltage
+            current_avg = meas.CurrentAverage   # o Current, o calcula promedio si son múltiples
+            cursor.execute(
+                "INSERT INTO measurements (experiment_id, voltage, current_avg) VALUES (%s, %s, %s)",
+                (1, voltage, current_avg)
+            )
         conn.commit()
-        logging.info("✅ Datos insertados correctamente.")
+        logging.info("✅ Mediciones insertadas correctamente.")
     except Exception as e:
         conn.rollback()
         logging.error("Error al insertar datos: %s", e)
@@ -39,16 +48,21 @@ def insertar_mediciones(conn, datos):
         cursor.close()
 
 if __name__ == "__main__":
-    # Obtener datos directamente desde PS Trace mediante el SDK
-    datos = obtener_datos_pstrace()
-    if datos:
-        conn = conectar_bd()
-        if conn:
-            try:
-                insertar_mediciones(conn, datos)
-            finally:
-                conn.close()
-        else:
-            logging.error("No se pudo establecer la conexión a la base de datos.")
-    else:
-        logging.error("No se obtuvieron datos desde PS Trace.")
+    # 1) Cargar la sesión desde el .pssession
+    ruta = os.path.join(project_root, "data", "ultima_medicion.pssession")
+    session = cargar_sesion(ruta)
+    if not session:
+        logging.error("No se pudo cargar la sesión, deteniendo.")
+        sys.exit(1)
+
+    # 2) Conectar a la BD
+    conn = conectar_bd()
+    if not conn:
+        logging.error("No se pudo conectar a la base de datos.")
+        sys.exit(1)
+
+    # 3) Insertar las mediciones
+    insertar_mediciones(conn, session)
+
+    # 4) Cerrar la conexión
+    conn.close()

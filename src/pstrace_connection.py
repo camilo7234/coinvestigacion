@@ -1,57 +1,34 @@
-from pspymethods import MethodSCRIPTDevice
+"""
+pstrace_connection.py
+
+Módulo para obtener datos del potenciostato en tiempo real.
+Actualmente, si no hay dispositivo, reutiliza la carga desde un archivo .pssession.
+"""
+
+import os
+import sys
 import logging
 
-# Configuración básica del logging para registrar información y errores.
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# 1) Añadir ruta raíz del proyecto para importar pstrace_session
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-def obtener_datos_pstrace(port="COM3", script_path="script.mscr"):
-    """
-    Conecta con el dispositivo a través del puerto especificado y utiliza un script para obtener datos de PSTrace.
-    
-    Parámetros:
-        port (str): Puerto COM a utilizar (por defecto "COM3").
-        script_path (str): Ruta al archivo de script que se enviará al dispositivo (por defecto "script.mscr").
-        
-    Retorna:
-        list o None: Lista de diccionarios con los datos obtenidos o None en caso de error.
-        
-    Manejo de errores:
-        - Captura errores en la conexión, en la lectura del script o durante la comunicación con el dispositivo,
-          registrando el error y retornando None.
-    """
-    try:
-        # Instanciar el dispositivo utilizando el puerto especificado.
-        # Este paso abre la conexión serial al dispositivo que se encuentra en el puerto indicado.
-        device = MethodSCRIPTDevice(port=port)
-        logging.info("Dispositivo instanciado en el puerto %s.", port)
-        
-        # Leer el contenido del script desde el archivo indicado.
-        try:
-            with open(script_path, "r") as f:
-                script = f.read()
-            logging.info("Script leído correctamente desde %s.", script_path)
-        except FileNotFoundError:
-            logging.error("El archivo de script no se encontró en la ruta: %s", script_path)
-            return None
-        except Exception as fe:
-            logging.error("Error al leer el archivo de script: %s", fe)
-            return None
-        
-        # Enviar el script al dispositivo para que se ejecute y se inicie la adquisición de datos.
-        device.send_script(script)
-        logging.info("Script enviado al dispositivo.")
-        
-        # Leer los datos que el dispositivo retorna tras ejecutar el script.
-        # Se espera que 'data' sea una lista de diccionarios con la información procesada.
-        data = device.read_data()
-        logging.info("Datos recibidos de PS Trace.")
-        return data
-        
-    except Exception as e:
-        logging.error("Error obteniendo datos de PS Trace: %s", e)
-        return None
+# 2) Importar la función que ya carga y procesa .pssession
+try:
+    from pstrace_session import cargar_sesion
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.info("pstrace_session importado correctamente.")
+except ImportError as e:
+    logging.error("Error al importar pstrace_session: %s", e)
+    sys.exit(1)
 
-if __name__ == "__main__":
-    # Ejecutar la función de obtención de datos para pruebas.
-    datos = obtener_datos_pstrace()
-    logging.info("Datos obtenidos: %s", datos)
+def obtener_datos_pstrace():
+    """
+    Obtiene los datos del potenciostato.
+    Si no hay dispositivo, lee el archivo .pssession de prueba.
+    """
+    # Ruta al archivo de prueba
+    archivo = os.path.join(project_root, "data", "ultima_medicion.pssession")
+    logging.info("Obteniendo datos desde archivo de prueba: %s", archivo)
+    return cargar_sesion(archivo)

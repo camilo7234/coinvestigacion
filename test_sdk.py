@@ -1,28 +1,41 @@
-import sys
-import os
+import sys, os
 import clr
+from System.Reflection import Assembly
 
-# Agregar la ruta del SDK si no está ya en sys.path
-sdk_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'sdk', 'PSPythonSDK', 'pspython'))
+# 1) Añadir la carpeta 'src' al path para que Python encuentre pstrace_session.py
+project_root = os.path.abspath(os.path.dirname(__file__))
+src_path     = os.path.join(project_root, 'src')
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+print("Ruta 'src' añadida:", src_path)
+
+# 2) Añadir la ruta del SDK al path
+sdk_path = os.path.join(project_root, 'sdk', 'PSPythonSDK', 'pspython')
 if sdk_path not in sys.path:
-    sys.path.append(sdk_path)
-print("Ruta del SDK agregada:", sdk_path)
+    sys.path.insert(0, sdk_path)
+print("Ruta SDK añadida:", sdk_path)
 
-# Cargar la DLL usando AddReference
-dll_path = os.path.join(sdk_path, "PalmSens.Core.dll")
+# 3) Cargar la DLL de PalmSens.Core.Windows
+dll_path = os.path.join(sdk_path, "PalmSens.Core.Windows.dll")
 print("Cargando DLL desde:", dll_path)
-# Usar AddReference para cargar por nombre (pythonnet no ofrece AddReferenceToFileAndPath en CPython)
-clr.AddReference("PalmSens.Core")
+Assembly.LoadFile(dll_path)
 
-# Intentar importar el subnamespace LoadSaveHelperFunctions
+# 4) Importar pstrace_session
 try:
-    from PalmSens.Core.LoadSaveHelperFunctions import LoadSaveHelperFunctions
-    print("LoadSaveHelperFunctions importado exitosamente.")
+    from pstrace_session import cargar_sesion
+    print("✅ pstrace_session importado correctamente.")
 except ImportError as e:
-    print("Error al importar LoadSaveHelperFunctions:", e)
+    print("❌ No se pudo importar pstrace_session:", e)
+    sys.exit(1)
 
-# Listar atributos del módulo PalmSens.Core
-import PalmSens.Core as PC
-print("Atributos disponibles en PalmSens.Core:")
-for attr in dir(PC):
-    print(attr)
+# 5) Verificar que LoadSaveHelperFunctions está disponible
+import PalmSens.Core.Windows as PCW
+print("Namespaces en PalmSens.Core.Windows:")
+for attr in dir(PCW):
+    print(" ", attr)
+
+try:
+    from PalmSens.Core.Windows.LoadSaveHelperFunctions import LoadSaveHelperFunctions
+    print("✅ LoadSaveHelperFunctions importado correctamente.")
+except ImportError as e:
+    print("❌ Error al importar LoadSaveHelperFunctions:", e)
