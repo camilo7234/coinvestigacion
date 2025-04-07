@@ -59,4 +59,5 @@ def electrochemical_impedance_spectroscopy(**kwargs):
 # just a test
 if __name__ == '__main__':
     ca = chronoamperometry(interval_time=.01, e=.2, run_time=5.0)
-    test = 'test'
+    print(f"RunTime: {ca.RunTime}, Potential: {ca.Potential}")
+    print("¡La función se ejecutó correctamente!")
